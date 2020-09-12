@@ -787,16 +787,10 @@ func searchEstates(c echo.Context) error {
 	}
 
 	searchQuery := "SELECT * FROM estate WHERE "
-	countQuery := "SELECT COUNT(*) FROM estate WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
-	err = db.GetContext(ctx, &res.Count, countQuery+searchCondition, params...)
-	if err != nil {
-		c.Logger().Errorf("searchEstates DB execution error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
 
 	estates := []Estate{}
 	params = append(params, perPage, page*perPage)
@@ -810,6 +804,7 @@ func searchEstates(c echo.Context) error {
 	}
 
 	res.Estates = estates
+	res.Count = int64(len(estates))
 
 	return c.JSON(http.StatusOK, res)
 }
