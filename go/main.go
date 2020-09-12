@@ -21,8 +21,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
-	nrecho "github.com/newrelic/go-agent/v3/integrations/nrecho-v3"
-	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 const Limit = 20
@@ -246,15 +244,6 @@ func init() {
 }
 
 func main() {
-	app, err := newrelic.NewApplication(
-		newrelic.ConfigAppName("isuumo"),
-		newrelic.ConfigLicense(os.Getenv("NEW_RELIC_LICENSE_KEY")),
-		newrelic.ConfigDistributedTracerEnabled(true),
-		newrelic.ConfigDebugLogger(os.Stdout),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// Echo instance
 	e := echo.New()
@@ -264,7 +253,6 @@ func main() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(nrecho.Middleware(app))
 
 	// Initialize
 	e.POST("/initialize", initialize)
@@ -295,7 +283,7 @@ func main() {
 		DBName:   getEnv("MYSQL_DBNAME", "isuumo"),
 		Password: getEnv("MYSQL_PASS", "isucon"),
 	}
-
+	var err error
 	db, err = mySQLConnectionData.ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
