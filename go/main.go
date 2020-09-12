@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
@@ -15,12 +16,12 @@ import (
 	"time"
 
 	"github.com/daisuzu/callcache"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
 	nrecho "github.com/newrelic/go-agent/v3/integrations/nrecho-v3"
-	_ "github.com/newrelic/go-agent/v3/integrations/nrmysql"
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
@@ -225,7 +226,7 @@ func getEnv(key, defaultValue string) string {
 //ConnectDB isuumoデータベースに接続する
 func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
 	dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v", mc.User, mc.Password, mc.Host, mc.Port, mc.DBName)
-	return sqlx.Open("nrmysql", dsn)
+	return sqlx.Open("mysql", dsn)
 }
 
 func init() {
@@ -425,7 +426,7 @@ func postChair(c echo.Context) error {
 }
 
 func searchChairs(c echo.Context) error {
-	ctx := newrelic.NewContext(c.Request().Context(), nrecho.FromContext(c))
+	ctx := context.Background()
 
 	conditions := make([]string, 0)
 	params := make([]interface{}, 0)
@@ -732,7 +733,7 @@ func postEstate(c echo.Context) error {
 }
 
 func searchEstates(c echo.Context) error {
-	ctx := newrelic.NewContext(c.Request().Context(), nrecho.FromContext(c))
+	ctx := context.Background()
 
 	conditions := make([]string, 0)
 	params := make([]interface{}, 0)
@@ -881,7 +882,7 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 }
 
 func searchEstateNazotte(c echo.Context) error {
-	ctx := newrelic.NewContext(c.Request().Context(), nrecho.FromContext(c))
+	ctx := context.Background()
 
 	coordinates := Coordinates{}
 	err := c.Bind(&coordinates)
