@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/daisuzu/callcache"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -591,6 +593,7 @@ func buyChair(c echo.Context) error {
 		c.Echo().Logger.Errorf("transaction commit error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	dispatcher.Remove("LowPricedChair")
 
 	return c.NoContent(http.StatusOK)
 }
@@ -599,10 +602,16 @@ func getChairSearchCondition(c echo.Context) error {
 	return c.JSON(http.StatusOK, chairSearchCondition)
 }
 
+var dispatcher = callcache.NewDispatcher(1*time.Minute, 10*time.Second)
+
 func getLowPricedChair(c echo.Context) error {
-	var chairs []Chair
-	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
-	err := db.Select(&chairs, query, Limit)
+	v, err := dispatcher.Do("LowPricedChair", func() (interface{}, error) {
+		var chairs []Chair
+		query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
+		err := db.Select(&chairs, query, Limit)
+		return chairs, err
+
+	})
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.Logger().Error("getLowPricedChair not found")
@@ -612,6 +621,7 @@ func getLowPricedChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	chairs := v.([]Chair)
 	return c.JSON(http.StatusOK, ChairListResponse{Chairs: chairs})
 }
 
