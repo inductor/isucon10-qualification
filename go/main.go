@@ -28,7 +28,9 @@ const Limit = 20
 const NazotteLimit = 50
 
 var db *sqlx.DB
+var readOnlyDB *sqlx.DB
 var mySQLConnectionData *MySQLConnectionEnv
+var mySQLRead *MySQLConnectionEnv
 var chairSearchCondition ChairSearchCondition
 var estateSearchCondition EstateSearchCondition
 
@@ -204,7 +206,7 @@ func (r *RecordMapper) Err() error {
 
 func NewMySQLConnectionEnv() *MySQLConnectionEnv {
 	return &MySQLConnectionEnv{
-		Host:     getEnv("MYSQL_HOST", "10.165.20.102"),
+		Host:     getEnv("MYSQL_HOST", "10.165.20.103"),
 		Port:     getEnv("MYSQL_PORT", "3306"),
 		User:     getEnv("MYSQL_USER", "isucon"),
 		DBName:   getEnv("MYSQL_DBNAME", "isuumo"),
@@ -285,12 +287,27 @@ func main() {
 	e.GET("/api/recommended_estate/:id", searchRecommendedEstateWithChair)
 
 	mySQLConnectionData = NewMySQLConnectionEnv()
+	mySQLRead = &MySQLConnectionEnv{
+		Host:     getEnv("MYSQL_HOST", "10.165.20.101"),
+		Port:     getEnv("MYSQL_PORT", "3306"),
+		User:     getEnv("MYSQL_USER", "isucon"),
+		DBName:   getEnv("MYSQL_DBNAME", "isuumo"),
+		Password: getEnv("MYSQL_PASS", "isucon"),
+	}
+
 	db, err = mySQLConnectionData.ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
 	}
 	db.SetMaxOpenConns(10)
 	defer db.Close()
+
+	readOnlyDB, err = mySQLRead.ConnectDB()
+	if err != nil {
+		e.Logger.Fatalf("read only DB connection failed : %v", err)
+	}
+	readOnlyDB.SetMaxOpenConns(10)
+	defer readOnlyDB.Close()
 
 	// Start server
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_PORT", "1323"))
@@ -801,7 +818,7 @@ func searchEstates(c echo.Context) error {
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
-	err = db.GetContext(ctx, &res.Count, countQuery+searchCondition, params...)
+	err = readOnlyDB.GetContext(ctx, &res.Count, countQuery+searchCondition, params...)
 	if err != nil {
 		c.Logger().Errorf("searchEstates DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -809,7 +826,7 @@ func searchEstates(c echo.Context) error {
 
 	estates := []Estate{}
 	params = append(params, perPage, page*perPage)
-	err = db.SelectContext(ctx, &estates, searchQuery+searchCondition+limitOffset, params...)
+	err = readOnlyDB.SelectContext(ctx, &estates, searchQuery+searchCondition+limitOffset, params...)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.JSON(http.StatusOK, EstateSearchResponse{Count: 0, Estates: []Estate{}})
