@@ -9,18 +9,17 @@ on:
       - master
     types: [opened, synchronize]
 
+defaults:
+  run:
+    shell: bash
+    working-directory: go
+
 jobs:
   build-deploy:
     runs-on: ubuntu-18.04
-
-defaults:
-    run:
-        shell: bash
-        working-directory: go
-
-steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
-      with:
-        go-version: '^1.14.7' # The Go version to download (if necessary) and use.
-    - run: make isuumo
+    steps:
+        - uses: actions/checkout@v2
+        - uses: actions/setup-go@v2
+          with:
+            go-version: '^1.14.7' # The Go version to download (if necessary) and use.
+        - run: make isuumo
