@@ -18,5 +18,4 @@ CREATE TABLE isuumo.estate
     features    VARCHAR(64)         NOT NULL,
     popularity  INTEGER             NOT NULL
 );
-
-create index estate_idx on isuumo.estate (rent);
+create index estate_idx on isuumo.estate (rent,longitude,latitude);
