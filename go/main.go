@@ -874,7 +874,7 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 
 	chair := Chair{}
 	query := `SELECT * FROM chair WHERE id = ?`
-	err = estateDB.Get(&chair, query, id)
+	err = db.Get(&chair, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.Logger().Infof("Requested chair id \"%v\" not found", id)
