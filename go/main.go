@@ -13,11 +13,13 @@ import (
 	"strconv"
 	"strings"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
+	nrecho "github.com/newrelic/go-agent/v3/integrations/nrecho-v3"
+	_ "github.com/newrelic/go-agent/v3/integrations/nrmysql"
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 const Limit = 20
@@ -219,7 +221,7 @@ func getEnv(key, defaultValue string) string {
 //ConnectDB isuumoデータベースに接続する
 func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
 	dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v", mc.User, mc.Password, mc.Host, mc.Port, mc.DBName)
-	return sqlx.Open("mysql", dsn)
+	return sqlx.Open("nrmysql", dsn)
 }
 
 func init() {
@@ -239,6 +241,16 @@ func init() {
 }
 
 func main() {
+	app, err := newrelic.NewApplication(
+		newrelic.ConfigAppName("isuumo"),
+		newrelic.ConfigLicense(os.Getenv("NEW_RELIC_LICENSE_KEY")),
+		newrelic.ConfigDistributedTracerEnabled(true),
+		newrelic.ConfigDebugLogger(os.Stdout),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Echo instance
 	e := echo.New()
 	e.Debug = true
@@ -247,6 +259,7 @@ func main() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(nrecho.Middleware(app))
 
 	// Initialize
 	e.POST("/initialize", initialize)
@@ -271,7 +284,6 @@ func main() {
 
 	mySQLConnectionData = NewMySQLConnectionEnv()
 
-	var err error
 	db, err = mySQLConnectionData.ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
